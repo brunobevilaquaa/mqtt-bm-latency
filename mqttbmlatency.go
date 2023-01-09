@@ -78,7 +78,7 @@ type JSONResults struct {
 	SubTotals *TotalSubResults `json:"receive totals"`
 }
 
-func Start(broker *string, topic *string, qos *int, size *int, count *int, clients *int, quiet bool) []byte {
+func Start(broker string, topic string, qos int, size int, count int, clients int, quiet bool) []byte {
 
 	var (
 		username  = ""
@@ -89,7 +89,7 @@ func Start(broker *string, topic *string, qos *int, size *int, count *int, clien
 	)
 
 	flag.Parse()
-	if *clients < 1 {
+	if clients < 1 {
 		log.Fatal("Invlalid arguments")
 	}
 
@@ -102,14 +102,14 @@ func Start(broker *string, topic *string, qos *int, size *int, count *int, clien
 
 	log.Printf("Starting subscribe..\n")
 
-	for i := 0; i < *clients; i++ {
+	for i := 0; i < clients; i++ {
 		sub := &SubClient{
 			ID:         i,
-			BrokerURL:  *broker,
+			BrokerURL:  broker,
 			BrokerUser: username,
 			BrokerPass: password,
-			SubTopic:   *topic + "-" + strconv.Itoa(i),
-			SubQoS:     byte(*subqos),
+			SubTopic:   topic + "-" + strconv.Itoa(i),
+			SubQoS:     byte(subqos),
 			KeepAlive:  keepalive,
 			Quiet:      quiet,
 		}
@@ -121,7 +121,7 @@ SUBJOBDONE:
 		select {
 		case <-subDone:
 			subCnt++
-			if subCnt == *clients {
+			if subCnt == clients {
 				if !quiet {
 					log.Printf("all subscribe job done.\n")
 				}
@@ -136,16 +136,16 @@ SUBJOBDONE:
 	}
 	pubResCh := make(chan *PubResults)
 	start := time.Now()
-	for i := 0; i < *clients; i++ {
+	for i := 0; i < clients; i++ {
 		c := &PubClient{
 			ID:         i,
-			BrokerURL:  *broker,
+			BrokerURL:  broker,
 			BrokerUser: username,
 			BrokerPass: password,
-			PubTopic:   *topic + "-" + strconv.Itoa(i),
-			MsgSize:    *size,
-			MsgCount:   *count,
-			PubQoS:     byte(*pubqos),
+			PubTopic:   topic + "-" + strconv.Itoa(i),
+			MsgSize:    size,
+			MsgCount:   count,
+			PubQoS:     byte(pubqos),
 			KeepAlive:  keepalive,
 			Quiet:      quiet,
 		}
@@ -153,8 +153,8 @@ SUBJOBDONE:
 	}
 
 	// collect the publish results
-	pubresults := make([]*PubResults, *clients)
-	for i := 0; i < *clients; i++ {
+	pubresults := make([]*PubResults, clients)
+	for i := 0; i < clients; i++ {
 		pubresults[i] = <-pubResCh
 	}
 	totalTime := time.Now().Sub(start)
@@ -168,13 +168,13 @@ SUBJOBDONE:
 	}
 
 	// notify subscriber that job done
-	for i := 0; i < *clients; i++ {
+	for i := 0; i < clients; i++ {
 		jobDone <- true
 	}
 
 	// collect subscribe results
-	subresults := make([]*SubResults, *clients)
-	for i := 0; i < *clients; i++ {
+	subresults := make([]*SubResults, clients)
+	for i := 0; i < clients; i++ {
 		subresults[i] = <-subResCh
 	}
 
