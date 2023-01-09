@@ -1,11 +1,11 @@
-package main
+package mqttbmlatency
 
 import (
+	"bytes"
 	"fmt"
 	"log"
-	"time"
-	"bytes"
 	"strconv"
+	"time"
 )
 
 import (
@@ -22,7 +22,7 @@ type PubClient struct {
 	MsgSize    int
 	MsgCount   int
 	PubQoS     byte
-        KeepAlive  int
+	KeepAlive  int
 	Quiet      bool
 }
 
@@ -72,8 +72,8 @@ func (c *PubClient) run(res chan *PubResults) {
 func (c *PubClient) genMessages(ch chan *Message, done chan bool) {
 	for i := 0; i < c.MsgCount; i++ {
 		ch <- &Message{
-			Topic:   c.PubTopic,
-			QoS:     c.PubQoS,
+			Topic: c.PubTopic,
+			QoS:   c.PubQoS,
 			//Payload: make([]byte, c.MsgSize),
 		}
 	}
@@ -122,8 +122,8 @@ func (c *PubClient) pubMessages(in, out chan *Message, doneGen, donePub chan boo
 		SetOnConnectHandler(onConnected).
 		SetKeepAlive(ka).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
-		log.Printf("PUBLISHER %v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
-	})
+			log.Printf("PUBLISHER %v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
+		})
 	if c.BrokerUser != "" && c.BrokerPass != "" {
 		opts.SetUsername(c.BrokerUser)
 		opts.SetPassword(c.BrokerPass)

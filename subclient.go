@@ -1,10 +1,10 @@
-package main
+package mqttbmlatency
 
 import (
 	"fmt"
 	"log"
-	"time"
 	"strconv"
+	"time"
 )
 
 import (
@@ -19,14 +19,14 @@ type SubClient struct {
 	BrokerPass string
 	SubTopic   string
 	SubQoS     byte
-        KeepAlive  int
+	KeepAlive  int
 	Quiet      bool
 }
 
-func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bool,) {
+func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bool) {
 	runResults := new(SubResults)
 	runResults.ID = c.ID
-	
+
 	forwardLatency := []float64{}
 
 	ka, _ := time.ParseDuration(strconv.Itoa(c.KeepAlive) + "s")
@@ -38,21 +38,21 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 		SetAutoReconnect(true).
 		SetKeepAlive(ka).
 		SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
-		recvTime := time.Now().UnixNano()
-		payload := msg.Payload()
-		i := 0
-		for ; i<len(payload)-3; i++ {
-			if payload[i]=='#' && payload[i+1]=='@' && payload[i+2]=='#' {
-				sendTime,_ := strconv.ParseInt(string(payload[:i]), 10, 64)
-				forwardLatency = append(forwardLatency, float64(recvTime - sendTime)/1000000) // in milliseconds
-				break
+			recvTime := time.Now().UnixNano()
+			payload := msg.Payload()
+			i := 0
+			for ; i < len(payload)-3; i++ {
+				if payload[i] == '#' && payload[i+1] == '@' && payload[i+2] == '#' {
+					sendTime, _ := strconv.ParseInt(string(payload[:i]), 10, 64)
+					forwardLatency = append(forwardLatency, float64(recvTime-sendTime)/1000000) // in milliseconds
+					break
+				}
 			}
-		}
-		runResults.Received++
-	}).
+			runResults.Received++
+		}).
 		SetConnectionLostHandler(func(client mqtt.Client, reason error) {
-		log.Printf("SUBSCRIBER %v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
-	})
+			log.Printf("SUBSCRIBER %v lost connection to the broker: %v. Will reconnect...\n", c.ID, reason.Error())
+		})
 	if c.BrokerUser != "" && c.BrokerPass != "" {
 		opts.SetUsername(c.BrokerUser)
 		opts.SetPassword(c.BrokerPass)
@@ -74,10 +74,10 @@ func (c *SubClient) run(res chan *SubResults, subDone chan bool, jobDone chan bo
 	}
 
 	subDone <- true
-//加各项统计
+	//加各项统计
 	for {
 		select {
-		case <- jobDone:
+		case <-jobDone:
 			client.Disconnect(250)
 			runResults.FwdLatencyMin = stats.StatsMin(forwardLatency)
 			runResults.FwdLatencyMax = stats.StatsMax(forwardLatency)
